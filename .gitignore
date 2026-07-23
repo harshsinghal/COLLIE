@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+run.log
+
+# source-derived data: not redistributable (see README)
+data/*
+!data/README.md
