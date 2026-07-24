@@ -39,10 +39,31 @@ Grade:
 Output STRICT JSON only:
 {{"topic_grades": ["precise"|"vague"|"wrong", ...], "missed": <int>, "tags_apt": <int>}}"""
 
+PROMPT_TAGS = """You are auditing a document-tagging model. Read the document and judge whether
+the model's tag set describes it faithfully. No reference answer exists — judge against the
+document alone.
+
+Document:
+{doc}
+
+Model's tags: {tags}
+
+Grade:
+1. For EACH tag, classify: "precise" (specifically true of this document — a real subject it
+   discusses or an accurate descriptor of how it is discussed), "vague" (true but so generic it
+   barely narrows the document down), or "wrong" (not true of this document).
+2. missed: count (0-3) of major subjects the document clearly discusses that NO tag reflects.
+   Cap at 3.
+
+Output STRICT JSON only:
+{{"topic_grades": ["precise"|"vague"|"wrong", ...], "missed": <int>, "tags_apt": 0}}"""
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pred", required=True)
     ap.add_argument("--run", required=True, help="short tag, e.g. 06")
+    ap.add_argument("--tags-only", action="store_true",
+                    help="grade a flat tag set (no topic/tag split)")
     a = ap.parse_args()
     man = {json.loads(l)["i"]: json.loads(l)
            for l in open(f"{HERE}/faith_manifest.jsonl", encoding="utf-8")}
@@ -50,14 +71,18 @@ def main():
     for l in open(a.pred, encoding="utf-8"):
         p = json.loads(l)
         m = man[p["i"]]
+        if a.tags_only:
+            content = PROMPT_TAGS.format(doc=m["text"][:3500],
+                                         tags=json.dumps(p.get("tags", [])))
+        else:
+            content = PROMPT.format(doc=m["text"][:3500],
+                                    topics=json.dumps(p.get("topics", [])),
+                                    tags=json.dumps(p.get("tags", [])))
         lines.append(json.dumps({
             "custom_id": f"FJ{a.run}-{p['i']:05d}",
             "method": "POST", "url": "/v1/chat/completions",
             "body": {"model": "gpt-5.4-mini",
-                     "messages": [{"role": "user", "content": PROMPT.format(
-                         doc=m["text"][:3500],
-                         topics=json.dumps(p.get("topics", [])),
-                         tags=json.dumps(p.get("tags", [])))}],
+                     "messages": [{"role": "user", "content": content}],
                      "max_completion_tokens": 300}}))
     path = f"{HERE}/faith_judge_batch_{a.run}.jsonl"
     open(path, "w", encoding="utf-8").write("\n".join(lines) + "\n")

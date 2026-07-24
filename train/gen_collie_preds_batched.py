@@ -18,7 +18,7 @@ GBS = int(os.environ.get("COLLIE_GBS", 16))
 def parse_labels(text):
     body = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
     body = re.sub(r"```(?:json)?|```", "", body)
-    m = re.search(r'\{\s*"(?:labels|topics)"\s*:.*\}', body, re.S)
+    m = re.search(r'\{\s*"(?:labels|topics|tags)"\s*:.*\}', body, re.S)
     if not m:
         return {}
     try:
