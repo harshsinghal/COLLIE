@@ -67,22 +67,44 @@ synthetic enterprise-register documents and label them with the same pipeline.
 The pipeline is corpus-agnostic: anything that yields `{id, text}` records
 works.
 
-## Results so far (210-doc held-out eval)
+## Results so far
+
+**Rounds 1–3 — closed-ontology phase** (210-doc held-out eval, exact match):
 
 | variant | topic F1 | topic P | topic R | correct-abstain /25 |
 |:--|:--:|:--:|:--:|:--:|
 | structured reason | 0.618 | 0.620 | 0.616 | 7 |
 | structured direct | 0.608 | 0.673 | 0.554 | 0 |
-| flat reason | 0.612 | 0.589 | 0.638 | **9** |
+| flat reason | 0.612 | 0.589 | 0.638 | 9 |
 | **flat direct** | **0.655** | 0.651 | 0.659 | 0 |
+| flat direct + 3× none-boost | 0.615 | 0.680 | 0.560 | 12 |
 
-Two findings:
 - **Output shape matters more than reasoning.** Dropping per-topic facet
   binding (flat `{"topics":[...],"tags":[...]}`) bought the direct model
   ~5 F1 points — the nested format was taxing topic identification itself.
-- **No trace, no abstention.** Across all four runs, only the reasoning
-  variants ever correctly return "no topics" on empty docs. Direct models
-  tag something on every document.
+- **Abstention is a data prior, not a capability.** Direct models never
+  abstained (0/25) until the training share of empty-label docs was boosted
+  8.5%→22%, after which they abstained fine (12/25) — but over-eagerly,
+  costing recall. With an open vocabulary the "none" class dissolves anyway
+  (log files become `system_error_logging`, not "no topic").
+
+**Round 4 — open-vocabulary, anchor-conditioned** (LLM-judge semantic
+scoring; register holdout: JIRA + logs never trained):
+
+| topic F1 (judged) | in-dist (140) | OOD registers (200) | transfer Δ |
+|:--|:--:|:--:|:--:|
+| reason | 0.515 | **0.567** | **+5.2** |
+| direct | **0.535** | 0.553 | +1.8 |
+
+- The catalog became a prompt-time input: five anchor regimes in training
+  (canonical / subset / paraphrase / alternative-domain / none) teach the
+  model to prefer whatever catalog it is handed and coin coherent topics
+  when the catalog doesn't fit.
+- **Reasoning's value shows up out-of-distribution.** In-distribution,
+  direct wins (the familiar tax); on never-trained registers the order
+  flips. Suggestive of "the trace is the transferable procedure" — but at
+  n=200 not yet conclusive. Round 5 (3× data + never-seen anchor
+  vocabularies at eval) is testing exactly this.
 
 ## Layout
 
@@ -98,5 +120,6 @@ journal/          findings, written as they happened
 
 ## Status
 
-Active development. Current experiment: teaching the flat-direct model to
-abstain (`none`-oversampling) without a reasoning trace.
+Active development. Current experiment (round 5): 3× training data and a
+harder OOD axis — evaluation under anchor vocabularies never seen in
+training (education, government, energy, media, biotech catalogs).
