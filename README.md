@@ -1,5 +1,9 @@
 # COLLIE
 
+<p align="center">
+  <img src="assets/collie.png" alt="COLLIE — a clever herder that sorts documents into the categories your organization understands" width="640">
+</p>
+
 **Constrained Ontology Labeling for Long-form Information in the Enterprise**
 
 COLLIE is a small (0.6B) model that catalogs enterprise documents: given any
