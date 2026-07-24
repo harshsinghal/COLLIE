@@ -91,23 +91,34 @@ works.
   costing recall. With an open vocabulary the "none" class dissolves anyway
   (log files become `system_error_logging`, not "no topic").
 
-**Round 4 — open-vocabulary, anchor-conditioned** (LLM-judge semantic
-scoring; register holdout: JIRA + logs never trained):
+**Rounds 4–5 — open-vocabulary, anchor-conditioned** (LLM-judge semantic
+scoring; two OOD axes: registers never trained on — JIRA tickets, system
+logs — and anchor vocabularies never trained on — education, government,
+energy, media, biotech catalogs). Round 5: 4,414 training docs, two model
+sizes, prediction pre-registered before the run:
 
-| topic F1 (judged) | in-dist (140) | OOD registers (200) | transfer Δ |
+| topic F1 (judged) | in-dist | register-OOD | anchor-OOD |
 |:--|:--:|:--:|:--:|
-| reason | 0.515 | **0.567** | **+5.2** |
-| direct | **0.535** | 0.553 | +1.8 |
+| reason 0.6B | 0.498 | 0.590 | 0.541 |
+| direct 0.6B | **0.548** | 0.587 | **0.559** |
+| reason 1.7B | 0.585 | 0.647 | 0.593 |
+| **direct 1.7B** | **0.593** | **0.670** | **0.630** |
 
 - The catalog became a prompt-time input: five anchor regimes in training
   (canonical / subset / paraphrase / alternative-domain / none) teach the
   model to prefer whatever catalog it is handed and coin coherent topics
-  when the catalog doesn't fit.
-- **Reasoning's value shows up out-of-distribution.** In-distribution,
-  direct wins (the familiar tax); on never-trained registers the order
-  flips. Suggestive of "the trace is the transferable procedure" — but at
-  n=200 not yet conclusive. Round 5 (3× data + never-seen anchor
-  vocabularies at eval) is testing exactly this.
+  when the catalog doesn't fit. **Handed never-seen catalogs, every model
+  still functions** — anchor-conditioning generalizes.
+- **The pre-registered prediction failed.** Round 4 had hinted reasoning
+  transfers better out-of-distribution; at 3× data the effect vanished, and
+  at 1.7B direct wins every cell — by the most on the hardest axis. A
+  distilled trace appears to act as a regularizer for an undertrained
+  model, not as a transferable procedure.
+- **The shipping recipe: direct fine-tune, open vocabulary, varied
+  anchors.** 0.6B for throughput, 1.7B for quality.
+
+The full arc — including the failed hypothesis — is written up in
+[journal/2026-07-24-five-rounds.md](journal/2026-07-24-five-rounds.md).
 
 ## Layout
 
@@ -123,6 +134,6 @@ journal/          findings, written as they happened
 
 ## Status
 
-Active development. Current experiment (round 5): 3× training data and a
-harder OOD axis — evaluation under anchor vocabularies never seen in
-training (education, government, energy, media, biotech catalogs).
+Five experimental rounds complete; the recipe is settled (direct fine-tune,
+open vocabulary, varied anchors). Trained models: `collie-r5-direct-0.6b`
+and `collie-r5-direct-1.7b` (plus the reason variants for the record).
