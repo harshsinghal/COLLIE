@@ -3,15 +3,16 @@
 
 *COLLIE is a librarian, not a judge. It catalogs what a document discusses —
 topic(s) plus descriptive facets — and makes NO judgment about sensitivity or
-severity. Severity is MASTIFF's job (rubric-conditioned), and it operates on
-COLLIE's description. "Constrained" = the decoder emits only valid ontology
-labels; it cannot invent a topic or facet value outside this file.*
+importance. What downstream systems do with the description is their business.
+(Historical note: v1 constrained the decoder to this file's labels; COLLIE has
+since moved to a soft-anchor design where this ontology is the seed
+vocabulary, not a cage.)*
 
 Two layers, both emitted per document (or per segment):
 - **Topics** — the subject(s) discussed. Multi-label; a document may carry
   several, or `none`.
 - **Facets** — cross-cutting descriptors that characterize *how* each topic is
-  discussed. These are the raw material MASTIFF turns into severity.
+  discussed.
 
 ## Layer 1 — Topic ontology (the subjects)
 
@@ -65,23 +66,23 @@ Worked contrast — same topic, opposite facets:
 | "BLS survey: median engineer pay rose 4% last year" | `compensation` | scope=aggregate, publicity=public, temporality=historical, specificity=figures, register=report |
 | "We can offer Jane 180 base, equity refresh pending VP sign-off" | `compensation` | scope=individual, publicity=internal, temporality=forward_looking, specificity=both, register=negotiation |
 
-MASTIFF then maps (topics + facets + SPANIEL's evidence spans) → severity via a
-rubric. COLLIE never decides low vs. high; it only describes.
+COLLIE never decides low vs. high importance; it only describes. The facet
+layer exists precisely so downstream consumers have enough description to make
+their own decisions.
 
 ## Open design questions (your calls)
 
 1. **Topic list** — 14 subjects above. Missing anything your target enterprises
    care about (export_control? board_governance? source_code / IP?), or is
    anything here noise?
-2. **Facet set** — 5 facets. `scope`/`publicity`/`temporality` are the strongest
-   severity drivers; `specificity`/`register` are softer. Keep all five, or trim
+2. **Facet set** — 5 facets. `scope`/`publicity`/`temporality` are the most
+   informative; `specificity`/`register` are softer. Keep all five, or trim
    to the load-bearing three for the MVP?
 3. **Facet granularity** — values are coarse on purpose. Do any need more values
    (e.g. `publicity` → add `regulated` for PII/PHI)?
 4. **Per-segment vs. per-document** — emit one label set for the whole document,
-   or per segment (turn/paragraph)? Per-segment is more useful (localizes) and
-   composes with SPANIEL, but is a harder labeling task. MVP could be
-   per-document; SPANIEL adds the localization.
+   or per segment (turn/paragraph)? Per-segment is more useful (localizes) but
+   is a harder labeling task. MVP is per-document.
 5. **Data implication** — because COLLIE describes rather than judges, training
    data no longer needs a "benign vs sensitive" split. It needs broad coverage
    of each topic across *all facet combinations* — the aggregate/public case and

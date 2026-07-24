@@ -2,23 +2,22 @@
 
 **Constrained Ontology Labeling for Long-form Information in the Enterprise**
 
-COLLIE is a small (0.6B) document-topic classifier — the first stage of a
-three-model DLP cascade:
+COLLIE is a small (0.6B) model that catalogs enterprise documents: given any
+text an organization produces — email, PDFs, tickets, chat, code, logs — it
+identifies the topic(s) discussed and assigns descriptive tags that together
+say what the document is about and how it discusses it.
 
-```
-COLLIE  →  what does this document discuss?   (topics + descriptive tags)
-SPANIEL →  where is the evidence?             (span extraction)   [github.com/harshsinghal/SPANIEL]
-MASTIFF →  how severe is it?                  (rubric-conditioned adjudication)
-```
+COLLIE is a **librarian, not a judge**: it describes content and makes no
+judgment about sensitivity or importance. A public salary survey and an
+individual's comp negotiation are both `compensation` — the tags
+(`aggregate/public` vs `individual/internal`) carry the distinction, and what
+you do with that description is your system's business.
 
-COLLIE is a **librarian, not a judge**: it catalogs what a document discusses
-and makes no sensitivity judgment. A BLS salary survey and an individual's
-comp negotiation are both `compensation` — the descriptive tags
-(`aggregate/public` vs `individual/internal`) are what downstream severity
-adjudication consumes.
-
-See [taxonomy.md](taxonomy.md) for the full ontology: 14 topics, 5 facet axes
-(scope, publicity, temporality, specificity, register).
+The catalog is a **soft anchor, not a cage**. You hand COLLIE a topic
+vocabulary at prompt time (yours, ours, or none at all); it prefers your
+terms when they fit and coins coherent topics when they don't — a log file
+becomes `system_error_logging`, not a forced bad fit. See
+[taxonomy.md](taxonomy.md) for the reference ontology it was seeded with.
 
 ## How it's built
 
