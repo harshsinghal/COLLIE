@@ -18,12 +18,14 @@ GBS = int(os.environ.get("COLLIE_GBS", 16))
 def parse_labels(text):
     body = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
     body = re.sub(r"```(?:json)?|```", "", body)
-    m = re.search(r'\{\s*"(?:labels|topics|tags)"\s*:.*\}', body, re.S)
+    m = re.search(r'\{\s*"(?:labels|topics|tags|subject)"\s*:.*\}', body, re.S)
     if not m:
         return {}
     try:
         d = json.loads(m.group(0))
-        return {k: d[k] for k in ("labels", "topics", "tags") if k in d}
+        keys = ("labels", "topics", "tags", "subject", "type", "audience",
+                "time", "purpose", "content_flags")
+        return {k: d[k] for k in keys if k in d}
     except Exception:
         return {}
 
@@ -48,9 +50,13 @@ def main():
         for j, r in enumerate(chunk):
             gen = tok.decode(out[j][enc.input_ids.shape[1]:], skip_special_tokens=True)
             parsed = parse_labels(gen)
-            fout.write(json.dumps({"i": r["i"], "labels": parsed.get("labels", []),
-                                   "topics": parsed.get("topics", []),
-                                   "tags": parsed.get("tags", [])}) + "\n")
+            row = {"i": r["i"], "labels": parsed.get("labels", []),
+                   "topics": parsed.get("topics", []),
+                   "tags": parsed.get("tags", [])}
+            for k in ("subject", "type", "audience", "time", "purpose", "content_flags"):
+                if k in parsed:
+                    row[k] = parsed[k]
+            fout.write(json.dumps(row) + "\n")
         fout.flush()
         done += len(chunk)
         print(f"{done}/{len(rows)}", flush=True)

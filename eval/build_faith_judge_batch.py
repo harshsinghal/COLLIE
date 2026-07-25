@@ -58,12 +58,41 @@ Grade:
 Output STRICT JSON only:
 {{"topic_grades": ["precise"|"vague"|"wrong", ...], "missed": <int>, "tags_apt": 0}}"""
 
+PROMPT_FACETS = """You are auditing an enterprise document-cataloging model that produces a faceted
+entry — one answer per facet. Read the document and grade each facet on its own question.
+No reference answer exists — judge against the document alone.
+
+Document:
+{doc}
+
+Model's catalog entry:
+subject: {subject}   type: {type}   audience: {audience}
+time: {time}   purpose: {purpose}   content_flags: {flags}
+
+Grade:
+1. subject_grades: for EACH subject term — "precise" (specifically names something this document
+   is about), "vague" (true but barely narrows it down), or "wrong".
+2. missed: count (0-3) of major subjects the document clearly discusses that subject omits.
+3. facet_ok: for each of type, audience, time, purpose — true if the value is a correct answer
+   to that facet's question for this document (null counts as correct only if genuinely
+   undeterminable), else false.
+4. flags_ok: for EACH content flag — true if that content is actually present in the document.
+5. redundant_pairs: count of pairs of values (across the whole entry) that convey essentially
+   the same information twice.
+
+Output STRICT JSON only:
+{{"subject_grades":[...], "missed":<int>,
+  "facet_ok":{{"type":bool,"audience":bool,"time":bool,"purpose":bool}},
+  "flags_ok":[...], "redundant_pairs":<int>}}"""
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pred", required=True)
     ap.add_argument("--run", required=True, help="short tag, e.g. 06")
     ap.add_argument("--tags-only", action="store_true",
                     help="grade a flat tag set (no topic/tag split)")
+    ap.add_argument("--facets", action="store_true",
+                    help="grade a keyed faceted entry (subject/type/audience/time/purpose/flags)")
     a = ap.parse_args()
     man = {json.loads(l)["i"]: json.loads(l)
            for l in open(f"{HERE}/faith_manifest.jsonl", encoding="utf-8")}
@@ -71,7 +100,14 @@ def main():
     for l in open(a.pred, encoding="utf-8"):
         p = json.loads(l)
         m = man[p["i"]]
-        if a.tags_only:
+        if a.facets:
+            content = PROMPT_FACETS.format(
+                doc=m["text"][:3500],
+                subject=json.dumps(p.get("subject", [])),
+                type=json.dumps(p.get("type")), audience=json.dumps(p.get("audience")),
+                time=json.dumps(p.get("time")), purpose=json.dumps(p.get("purpose")),
+                flags=json.dumps(p.get("content_flags", [])))
+        elif a.tags_only:
             content = PROMPT_TAGS.format(doc=m["text"][:3500],
                                          tags=json.dumps(p.get("tags", [])))
         else:
