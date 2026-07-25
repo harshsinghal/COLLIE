@@ -38,8 +38,8 @@ def main():
         learning_rate=5e-7,
         lr_scheduler_type="cosine",
         warmup_ratio=0.1,
-        max_length=2048,
-        max_prompt_length=1800,
+        max_length=2048,          # TRL 1.9 dropped max_prompt_length/max_completion_length
+        truncation_mode="keep_end",   # documents are long; keep the end nearest the answer
         bf16=True,
         gradient_checkpointing=True,
         logging_steps=10,
