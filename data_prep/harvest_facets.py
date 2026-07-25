@@ -62,8 +62,12 @@ def main():
     for fn in ("anchors_2k.jsonl", "anchors_more.jsonl"):
         for l in open(f"{HERE}/{fn}", encoding="utf-8"):
             a = json.loads(l); anch[a["i"]] = a
+    import argparse
+    ap = argparse.ArgumentParser(); ap.add_argument("--key", default="facet")
+    ap.add_argument("--out", default="facet_clean.jsonl")
+    args = ap.parse_args()
     st = json.load(open(f"{HERE}/state_ov.json"))
-    b = requests.get(f"https://api.openai.com/v1/batches/{st['facet']['batch_id']}",
+    b = requests.get(f"https://api.openai.com/v1/batches/{st[args.key]['batch_id']}",
                      headers=H, timeout=30).json()
     if b.get("status") != "completed":
         print(f"batch: {b.get('status')}"); return
@@ -87,10 +91,10 @@ def main():
                      "regime": a["regime"], "anchor": a["anchor"],
                      "think": think, "entry": entry})
     surv.sort(key=lambda x: x["i"])
-    with open(f"{HERE}/facet_clean.jsonl", "w", encoding="utf-8") as f:
+    with open(f"{HERE}/{args.out}", "w", encoding="utf-8") as f:
         for s in surv:
             f.write(json.dumps(s, ensure_ascii=False) + "\n")
-    print(f"survivors={len(surv)}/{st['facet']['n']}")
+    print(f"survivors={len(surv)}/{st[args.key]['n']}")
     print("rejects:", dict(rej.most_common(8)))
     print("by src:", dict(Counter(s["src"] for s in surv)))
     nulls = Counter()
