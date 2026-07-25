@@ -6,22 +6,37 @@
 
 **Constrained Ontology Labeling for Long-form Information in the Enterprise**
 
-COLLIE is a small (0.6B) model that catalogs enterprise documents: given any
+COLLIE is a small (0.6B) model that catalogs enterprise documents. Given any
 text an organization produces — email, PDFs, tickets, chat, code, logs — it
-identifies the topic(s) discussed and assigns descriptive tags that together
-say what the document is about and how it discusses it.
+fills out a faceted catalog card, one answer per question:
+
+```json
+{"subject": ["filesystem_uri_parsing", "s3_path_encoding"],
+ "type": "issue_report",
+ "audience": "internal_team",
+ "time": "current",
+ "purpose": "bug_report",
+ "content_flags": ["code_snippets", "error_traceback"]}
+```
+
+Every value is **open vocabulary** — there is no fixed label set anywhere.
+Subjects are written in the register an enterprise would actually file
+under (`vendor_contract_negotiation`, `incident_response`,
+`windows_cbs_servicing_error`), and the card's structure guarantees the
+answers are complementary rather than redundant: each facet answers a
+different question, in the spirit of NIST/ISO-style faceted classification.
 
 COLLIE is a **librarian, not a judge**: it describes content and makes no
-judgment about sensitivity or importance. A public salary survey and an
-individual's comp negotiation are both `compensation` — the tags
-(`aggregate/public` vs `individual/internal`) carry the distinction, and what
-you do with that description is your system's business.
+judgment about sensitivity or importance. `content_flags` state what is
+present (`personal_pii`, `financial_figures`) — what you do with that
+description is your system's business.
 
-The catalog is a **soft anchor, not a cage**. You hand COLLIE a topic
-vocabulary at prompt time (yours, ours, or none at all); it prefers your
-terms when they fit and coins coherent topics when they don't — a log file
-becomes `system_error_logging`, not a forced bad fit. See
-[taxonomy.md](taxonomy.md) for the reference ontology it was seeded with.
+Notably, there is no topic catalog in the prompt — by design, and by
+evidence. We tried catalog-conditioning in several forms and it reliably
+made a small model force-fit catalog terms onto documents they didn't
+describe (see the journal). The bare model describes documents better than
+any anchored variant ever did. See [taxonomy.md](taxonomy.md) for the
+historical reference ontology the project started from.
 
 ## How it's built
 
@@ -114,11 +129,33 @@ sizes, prediction pre-registered before the run:
   at 1.7B direct wins every cell — by the most on the hardest axis. A
   distilled trace appears to act as a regularizer for an undertrained
   model, not as a transferable procedure.
-- **The shipping recipe: direct fine-tune, open vocabulary, varied
-  anchors.** 0.6B for throughput, 1.7B for quality.
+- **The shipping recipe after these rounds: direct fine-tune, open
+  vocabulary.** 0.6B for throughput, 1.7B for quality.
 
 The full arc — including the failed hypothesis — is written up in
 [journal/2026-07-24-five-rounds.md](journal/2026-07-24-five-rounds.md).
+
+**Faithfulness phase — judging output against the document itself**
+(3,705 fresh never-trained docs; a grader reads the document and the
+model's card and checks each claim; no reference labels):
+
+| design | wrong subjects (worst mode) | precise subjects |
+|:--|:--:|:--:|
+| topics + catalog anchor | 28% | 51% |
+| flat tags + catalog anchor | 19% | 67% |
+| faceted card + catalog anchor | 56% | 30% |
+| **faceted card, no catalog (final)** | **9%** | **79%** |
+
+Final model (`collie-ent-direct-0.6b`), uniform across all document types:
+**79% precise subjects, 9% wrong, 0.39 missed subjects/doc, 92% correct
+artifact-type**, low redundancy, 100% parseable cards.
+
+The catalog experiments failed the same way every time: telling a small
+model "fill N slots, prefer these words" makes it force-fit the words
+whether they describe the document or not. Constrain the **shape** (one
+answer per facet), free the **words** — that's the recipe. Written up
+plainly in
+[journal/2026-07-25-the-catalog-was-the-problem.md](journal/2026-07-25-the-catalog-was-the-problem.md).
 
 ## Layout
 
@@ -134,6 +171,8 @@ journal/          findings, written as they happened
 
 ## Status
 
-Five experimental rounds complete; the recipe is settled (direct fine-tune,
-open vocabulary, varied anchors). Trained models: `collie-r5-direct-0.6b`
-and `collie-r5-direct-1.7b` (plus the reason variants for the record).
+The v1 recipe is settled: **anchor-free faceted catalog cards,
+enterprise-register subjects, direct fine-tune**. Current model:
+`collie-ent-direct-0.6b` (earlier round models kept for the record).
+Next: a GRPO pass rewarding specific, non-redundant, enterprise-sounding
+phrasing — the remaining gaps are style, not correctness.
