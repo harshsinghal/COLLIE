@@ -1,0 +1,78 @@
+[
+ {
+  "name": "kafka_issue.txt",
+  "source": "apache JIRA ticket",
+  "text": "Issue: Investigate potential improvements to async consumer CPU usage under low max.poll.records \n\nAs series of improvements were already made to reduce CPU usage on the async consumer for low max.poll.records (e.g, 5).\r\n\r\nChanges to improve CPU usage https://issues.apache.org/jira/browse/KAFKA-18376\r\n\r\nThat showed good improvements (async CPU usage aligned with the classic consumer), but it introduced some correctness issues that had to be fixed (https://issues.apache.org/jira/browse/KAFKA-20332 ). After these correctness fixes, low max.poll.record scenarios CPU went from 18% to 25% +- (classic remains at 18%) in some validations (scenarios with default configs remained unaffected)\r\n\r\nThis task is to look into the low max.poll.records case and CPU usage for the async consumer, to identify what else could be improved there (without sacrificing any correctness guarantees)\n\nComment: [~lianetm]Hi!\r\nIf you don't have any plan for this task, May I take a look?\n\nComment: Sure, assigned. Thanks a lot for helping out! Ping me to help with reviews/discussions when you need.\n\nComment: Thanks a lot!\r\nI will let you know when I need a discussion!",
+  "card": {
+   "subject": [
+    "async_consumer_cpu_usage",
+    "low_max_poll_records",
+    "kafka_performance"
+   ],
+   "type": "issue_comment",
+   "audience": "internal_team",
+   "time": "current",
+   "purpose": "request",
+   "content_flags": [
+    "code_snippets",
+    "technical_issue_comments"
+   ]
+  }
+ },
+ {
+  "name": "node_events.log",
+  "source": "cluster system log",
+  "text": "70708 node-115 action start 1108647304 1 boot  (command 3413)\n112147 node-82 action start 1111072078 1 boot  (command 3473)\n136495 node-150 action start 1111865182 1 wait  (command 3523)\n136459 node-208 action start 1111865169 1 wait  (command 3525)\n134514 node-254 action start 1111862672 1 wait  (command 3519)\n134299 node-251 action start 1111862280 1 boot  (command 3519)\n128650 node-231 action start 1111855559 1 boot  (command 3512)\n163965 node-195 action start 1114095465 1 boot  (command 3579)\n164990 node-114 action start 1114095917 1 boot  (command 3572)\n165357 node-246 action start 1114095982 1 boot  (command 3580)\n208690 node-65 action start 1116601343 1 wait  (command 3612)\n208761 node-147 action start 1116601359 1 boot  (command 3615)\n210411 node-40 action start 1116601982 1 wait  (command 3609)\n211063 node-18 action start 1116604606 1 boot  (command 3624)\n212813 node-239 action start 1116611765 1 wait  (command 3649)",
+  "card": {
+   "subject": [
+    "node_action_schedule",
+    "system_boot_commands",
+    "system_event_log"
+   ],
+   "type": "system_event_log",
+   "audience": "internal_team",
+   "time": "historical",
+   "purpose": "report",
+   "content_flags": [
+    "code_snippets"
+   ]
+  }
+ },
+ {
+  "name": "slack_message.txt",
+  "source": "community chat message",
+  "text": "Hi everyone, I\u2019ve recently started writing blogs on infrastructure-related topics. So far, I\u2019ve written three blogs:Running GPUs in Kubernetes: From Setup to Scheduling and Sharinghttps://medium.com/@pabhi18/running-gpus-in-kubernetes-from-setup-to-scheduling-and-sharing-b6b7ebd10d4eInference Engine: A Simple Explanationhttps://medium.com/@pabhi18/inference-engine-a-simple-explanation-80d319a492beRunning LLM Inference on GPUs with Kuberneteshttps://medium.com/@pabhi18/running-llm-inference-on-gpus-with-kubernetes-41ce0d0c5594The third blog is based on a project I recently built and I\u2019d love to hear your opinions and feedback on my blogs.",
+  "card": {
+   "subject": [
+    "infrastructure_blog_writing",
+    "kubernetes_gpu_inference",
+    "llm_inference_kubernetes"
+   ],
+   "type": "blog_post",
+   "audience": "public",
+   "time": "current",
+   "purpose": "announcement",
+   "content_flags": []
+  }
+ },
+ {
+  "name": "AmazonProductFeedTest.php",
+  "source": "source code",
+  "text": "<?php\n\nnamespace StoreIntegrator\\tests\\Amazon;\n\nuse Sabre\\Xml\\Writer;\nuse StoreIntegrator\\Amazon\\AmazonProduct;\nuse StoreIntegrator\\Amazon\\ProductFeed;\nuse StoreIntegrator\\tests\\TestCase;\n\nclass AmazonProductFeedTest extends TestCase\n{\n    public function testTestXMLAgainstXSD()\n    {\n        $schema = __DIR__ . '/../xmlStubs/xsd/amzn-envelope.xsd';\n        $xml = __DIR__ . '/../xmlStubs/amazon-product.xml';\n        $this->assertValidXML($schema, $xml, 'The generated feed does not validate against Amazon definition.');\n    }\n\n    public function testFeedGenerationForComputerCategory()\n    {\n        $product = new AmazonProduct([\n            'name' => 'Dell Vostro',\n            'description' => 'Somee cool seo description',\n            'category' => 'Computers',\n            'productType' => 'NotebookComputer',\n            'price' => 2000,\n            'currency' => 'USD',\n            'brand' => 'Dell',\n            'sku' => 'd1234',\n            'weight' => 7000,\n            'quantity' => 100\n        ]);\n\n        $feedGenerator = new ProductFeed(new Writer());\n\n//        $this->assertValidXML(__DIR__ . '/../xmlStubs/xsd/amzn-envelope.xsd', $feedGenerator->create($product));\n        $this->assertXmlStringEqualsXmlFile(__DIR__ . '/../xmlStubs/amzn-computer-product.xml', $feedGenerator->create($product));\n    }\n}",
+  "card": {
+   "subject": [
+    "amazon_product_feed_validation",
+    "product_feed_generation",
+    "xml_schema_validation"
+   ],
+   "type": "test_case",
+   "audience": "internal_team",
+   "time": "current",
+   "purpose": "test",
+   "content_flags": [
+    "code_snippets",
+    "xml_file_references"
+   ]
+  }
+ }
+]

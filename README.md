@@ -38,6 +38,118 @@ describe (see the journal). The bare model describes documents better than
 any anchored variant ever did. See [taxonomy.md](taxonomy.md) for the
 historical reference ontology the project started from.
 
+<p align="center">
+  <img src="assets/collie_demo.gif" alt="COLLIE cataloging a JIRA ticket, a system log, a chat message and a source file" width="820">
+</p>
+
+<sub>Every document and every card in that demo is real: documents from the
+held-out evaluation corpus, cards exactly as `collie-ent-direct-0.6b`
+produced them.</sub>
+
+## Quick start
+
+```bash
+pip install torch transformers
+python collie.py --file report.txt --pretty
+```
+
+`collie.py` prints one JSON card per document (JSON Lines by default, so it
+pipes straight into `jq`, DuckDB, or pandas):
+
+```bash
+# a folder of documents
+python collie.py --glob 'docs/*.txt' > catalog.jsonl
+
+# piped text
+cat email.eml | python collie.py
+
+# count what your corpus is about
+python collie.py --glob 'docs/*' | jq -r '.subject[]' | sort | uniq -c | sort -rn | head
+```
+
+It runs on CPU (a second or two per document) and much faster on any GPU;
+the model is 0.6B, so ~1.5 GB of memory.
+
+### Try it on public Hugging Face datasets
+
+COLLIE was trained on enterprise registers — email, PDFs, tickets, chat,
+code, logs — so any dataset of real documents works. `--hf-dataset` streams
+the data, so nothing is downloaded in full:
+
+```bash
+# Real-world PDFs (what COLLIE saw most of in training)
+python collie.py --hf-dataset HuggingFaceFW/finepdfs --hf-config eng_Latn \
+                 --hf-split train --hf-field text --limit 20 --pretty
+
+# Corporate email — the classic enterprise corpus
+python collie.py --hf-dataset snoop2head/enron_aeslc_emails \
+                 --hf-field text --limit 20 --pretty
+
+# GitHub issues and pull requests
+python collie.py --hf-dataset bigcode/the-stack-github-issues \
+                 --hf-field content --limit 20 --pretty
+
+# Source code
+python collie.py --hf-dataset bigcode/the-stack-smol \
+                 --hf-config data/python --hf-field content --limit 10 --pretty
+
+# Legal contracts
+python collie.py --hf-dataset albertvillanova/legal_contracts \
+                 --hf-field text --limit 10 --pretty
+```
+
+(Dataset names and field names on the Hub change over time — if one errors,
+check the dataset page for the right `--hf-config` / `--hf-field`.)
+
+### What the output looks like
+
+Real cards from the evaluation set, one per register:
+
+**Apache JIRA ticket** — *"Investigate potential improvements to async consumer CPU usage under low max.poll.records…"*
+```json
+{"subject": ["async_consumer_cpu_usage", "low_max_poll_records", "kafka_performance"],
+ "type": "issue_comment", "audience": "internal_team", "time": "current",
+ "purpose": "request", "content_flags": ["code_snippets", "technical_issue_comments"]}
+```
+
+**Cluster log** — *"70708 node-115 action start 1108647304 1 boot (command 3413)…"*
+```json
+{"subject": ["node_action_schedule", "system_boot_commands", "system_event_log"],
+ "type": "system_event_log", "audience": "internal_team", "time": "historical",
+ "purpose": "report", "content_flags": ["code_snippets"]}
+```
+
+**Community chat message** — *"I've recently started writing blogs on infrastructure-related topics…"*
+```json
+{"subject": ["infrastructure_blog_writing", "kubernetes_gpu_inference", "llm_inference_kubernetes"],
+ "type": "blog_post", "audience": "public", "time": "current",
+ "purpose": "announcement", "content_flags": []}
+```
+
+**Government PDF** — *"EMERGENCY ORDER — Local Emergency Order for Broome County…"*
+```json
+{"subject": ["emergency_order", "financial_disclosure_filing", "state_employment_dispute"],
+ "type": "official_order", "audience": "internal_team", "time": "historical",
+ "purpose": "instruction", "content_flags": ["legal_terms", "personal_pii"]}
+```
+
+Note the last one is imperfect — `financial_disclosure_filing` is a stretch
+for that document. At 0.6B roughly 9% of subjects are wrong; the numbers
+below are measured, not aspirational.
+
+## Checkpoints
+
+| model | what it is | use it? |
+|:--|:--|:--|
+| [`collie-ent-direct-0.6b`](https://huggingface.co/Harsh/collie-ent-direct-0.6b) | the v1 recipe: anchor-free faceted cards, enterprise-register subjects | **yes — recommended** |
+| `collie-dpo-0.6b` | + DPO on self-ranked samples | no — no measurable gain |
+| `collie-ts-dpo-0.6b` | + DPO against teacher cards | no — flat, and `time` regressed |
+| `collie-r5-direct-1.7b` | earlier round, 1.7B, topic/tag output (not faceted cards) | only if you want the older output shape at higher quality |
+
+Both DPO checkpoints are published for reproducibility; see
+[the write-up](journal/2026-07-25-two-ways-rl-didnt-work.md) for why neither
+is recommended.
+
 ## How it's built
 
 1. **Real enterprise-register corpora, all from public sources** — 2,480
@@ -160,7 +272,8 @@ plainly in
 ## Layout
 
 ```
-taxonomy.md       the ontology (topics + facets) — the contract
+collie.py         run the model on files, folders, stdin, or a HF dataset
+taxonomy.md       the historical reference ontology the project started from
 data_prep/        corpus sampling, teacher labeling (OpenAI batch + OpenRouter), SFT assembly
 train/            0.6B SFT + eval-generation scripts (run on a rented GPU)
 eval/             scorers: structured (topic F1 + per-facet acc) and flat (topics/tags F1)
@@ -171,8 +284,16 @@ journal/          findings, written as they happened
 
 ## Status
 
-The v1 recipe is settled: **anchor-free faceted catalog cards,
-enterprise-register subjects, direct fine-tune**. Current model:
-`collie-ent-direct-0.6b` (earlier round models kept for the record).
-Next: a GRPO pass rewarding specific, non-redundant, enterprise-sounding
-phrasing — the remaining gaps are style, not correctness.
+v1 is done and shipped: **anchor-free faceted catalog cards,
+enterprise-register subjects, direct fine-tune** →
+`collie-ent-direct-0.6b`.
+
+Preference tuning was tried twice (self-play DPO and teacher-vs-student
+DPO) and neither improved quality — two structurally different methods
+failing the same way, plus the finding that the 0.6B student already
+matches its GPT teacher on 59% of documents, says the remaining errors are
+capacity limits rather than style problems. The write-up is
+[here](journal/2026-07-25-two-ways-rl-didnt-work.md).
+
+The lever with actual evidence behind it is model size, so a 1.7B version
+of the faceted recipe is the natural next step.
