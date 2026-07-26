@@ -35,7 +35,7 @@ def main():
         num_train_epochs=float(os.environ.get("DPO_EPOCHS", 1)),
         per_device_train_batch_size=int(os.environ.get("DPO_BS", 4)),
         gradient_accumulation_steps=int(os.environ.get("DPO_ACCUM", 4)),
-        learning_rate=5e-7,
+        learning_rate=float(os.environ.get("DPO_LR", 5e-7)),
         lr_scheduler_type="cosine",
         warmup_ratio=0.1,
         max_length=2048,          # TRL 1.9 dropped max_prompt_length/max_completion_length
